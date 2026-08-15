@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>AI職務経歴書アシスタント</title>
+</head>
+<body>
+
+<h1>AI職務経歴書アシスタント</h1>
+
+<h2>職務経歴</h2>
+
+<textarea
+        id="career"
+        rows="15"
+        cols="80"
+        placeholder="職務経歴を入力してください">
+</textarea>
+
+<br><br>
+
+<button id="analyzeButton" type="button" onclick="analyzeCareer()">
+    AIに分析してもらう
+</button>
+
+<br><br>
+
+<button type="button" onclick="extractFacts()">
+    事実抽出テスト
+</button>
+
+<h2>AI分析結果</h2>
+
+<div>
+    <h3>職務経歴の要約</h3>
+    <p id="summary">ここにAIの回答が表示されます。</p>
+
+    <h3>技術的な強み</h3>
+    <div id="strengths">
+        <p>ここにAIの回答が表示されます。</p>
+    </div>
+
+    <h3>面接でアピールすべきポイント</h3>
+    <div id="appealPoints">
+        <p>ここにAIの回答が表示されます。</p>
+    </div>
+
+    <h3>今後伸ばすべきスキル</h3>
+    <div id="skills">
+        <p>ここにAIの回答が表示されます。</p>
+    </div>
+</div>
+
+<script>
+
+    /**
+     * 職務経歴をAI分析する
+     */
+    async function analyzeCareer() {
+
+        const career = document.getElementById("career").value;
+
+        if (!career.trim()) {
+            alert("職務経歴を入力してください。");
+            return;
+        }
+
+        const button = document.getElementById("analyzeButton");
+
+        button.disabled = true;
+        button.textContent = "AI分析中...";
+
+        try {
+
+            const response = await fetch("/api/analyze", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    career: career
+                })
+            });
+
+            if (!response.ok) {
+
+                const errorMessage = await response.text();
+
+                if (errorMessage) {
+                    throw new Error(errorMessage);
+                }
+
+                throw new Error("APIエラー: " + response.status);
+            }
+
+            const result = await response.json();
+
+            console.log("===== AI分析結果 =====");
+            console.log(result);
+
+            /*
+             * 職務経歴の要約
+             */
+            document.getElementById("summary").textContent =
+                result.summary || "AIから回答がありません。";
+
+
+            /*
+             * 技術的な強み
+             */
+            document.getElementById("strengths").innerHTML =
+                createList(result.strengths);
+
+
+            /*
+             * 面接でアピールすべきポイント
+             */
+            document.getElementById("appealPoints").innerHTML =
+                createList(result.interviewPoints);
+
+
+            /*
+             * 今後伸ばすべきスキル
+             */
+            document.getElementById("skills").innerHTML =
+                createList(result.recommendedSkills);
+
+
+        } catch (error) {
+
+            console.error("AI分析エラー:", error);
+
+            alert(error.message);
+
+        } finally {
+
+            button.disabled = false;
+            button.textContent = "AIに分析してもらう";
+        }
+    }
+
+
+    /**
+     * 職務経歴書から事実だけを抽出する
+     */
+    async function extractFacts() {
+
+        const career = document.getElementById("career").value;
+
+        if (!career.trim()) {
+            alert("職務経歴を入力してください。");
+            return;
+        }
+
+        try {
+
+            const response = await fetch("/api/facts", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    career: career
+                })
+            });
+
+            if (!response.ok) {
+
+                const errorMessage = await response.text();
+
+                throw new Error(
+                    errorMessage || "APIエラー: " + response.status
+                );
+            }
+
+            const result = await response.json();
+
+            console.log("===== 抽出された事実 =====");
+            console.log(result);
+
+
+            /*
+             * FactExtractionResponseの各項目を
+             * 1つの配列にまとめる
+             */
+            const facts = [];
+
+
+            /*
+             * 経験年数・経験期間
+             */
+            addFacts(
+                facts,
+                "経験年数・経験期間",
+                result.experienceYears
+            );
+
+
+            /*
+             * 業務内容
+             */
+            addFacts(
+                facts,
+                "業務内容",
+                result.businessActivities
+            );
+
+
+            /*
+             * 担当したシステム・プロジェクト
+             */
+            addFacts(
+                facts,
+                "担当したシステム・プロジェクト",
+                result.systems
+            );
+
+
+            /*
+             * 担当した工程
+             */
+            addFacts(
+                facts,
+                "担当した工程",
+                result.processes
+            );
+
+
+            /*
+             * 使用した技術・言語・フレームワーク・製品
+             */
+            addFacts(
+                facts,
+                "使用した技術・言語・フレームワーク・製品",
+                result.technologies
+            );
+
+
+            /*
+             * システム間連携・インターフェース方式
+             */
+            addFacts(
+                facts,
+                "システム間連携・インターフェース方式",
+                result.interfaces
+            );
+
+
+            /*
+             * 担当した役割
+             */
+            addFacts(
+                facts,
+                "担当した役割",
+                result.roles
+            );
+
+
+            /*
+             * 明記された成果
+             */
+            addFacts(
+                facts,
+                "明記された成果",
+                result.achievements
+            );
+
+
+            /*
+             * 明記された資格
+             */
+            addFacts(
+                facts,
+                "明記された資格",
+                result.qualifications
+            );
+
+
+            /*
+             * 明記されたチーム規模・人数
+             */
+            addFacts(
+                facts,
+                "明記されたチーム規模・人数",
+                result.teamSize
+            );
+
+
+            console.log("===== 整形後の事実 =====");
+            console.log(facts);
+
+
+            /*
+             * 事実が1件もない場合
+             */
+            if (facts.length === 0) {
+
+                alert("抽出された事実がありません。");
+
+                return;
+            }
+
+
+            /*
+             * アラートに表示
+             */
+            alert(
+                facts
+                    .map((fact, index) => {
+                        return (index + 1) + ". " + fact;
+                    })
+                    .join("\n")
+            );
+
+
+        } catch (error) {
+
+            console.error("事実抽出エラー:", error);
+
+            alert(error.message);
+        }
+    }
+
+
+    /**
+     * FactExtractionResponseの項目を
+     * 表示用の配列に追加する
+     */
+    function addFacts(facts, category, items) {
+
+        if (!Array.isArray(items)) {
+            return;
+        }
+
+        items.forEach(item => {
+
+            if (item === null || item === undefined) {
+                return;
+            }
+
+            const text = String(item).trim();
+
+            if (!text) {
+                return;
+            }
+
+            facts.push(
+                "■ " + category + "\n" +
+                "- " + text
+            );
+        });
+    }
+
+
+    /**
+     * 配列をHTMLの箇条書きに変換する
+     */
+    function createList(items) {
+
+        /*
+         * 配列でない場合
+         */
+        if (!Array.isArray(items)) {
+
+            console.warn(
+                "配列ではない値が渡されました:",
+                items
+            );
+
+            return "<p>AIから回答がありません。</p>";
+        }
+
+
+        /*
+         * 空配列の場合
+         */
+        if (items.length === 0) {
+
+            return "<p>AIから回答がありません。</p>";
+        }
+
+
+        /*
+         * 箇条書きに変換
+         */
+        return "<ul>" +
+            items
+                .map(item => {
+
+                    /*
+                     * 通常は文字列
+                     */
+                    if (typeof item === "string") {
+                        return "<li>" + escapeHtml(item) + "</li>";
+                    }
+
+
+                    /*
+                     * 万一オブジェクトが返ってきた場合
+                     */
+                    if (item && typeof item === "object") {
+                        return "<li>" +
+                            escapeHtml(JSON.stringify(item)) +
+                            "</li>";
+                    }
+
+
+                    /*
+                     * その他
+                     */
+                    return "<li>" +
+                        escapeHtml(String(item)) +
+                        "</li>";
+
+                })
+                .join("") +
+            "</ul>";
+    }
+
+
+    /**
+     * HTML特殊文字をエスケープする
+     */
+    function escapeHtml(value) {
+
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+</script>
+
+</body>
+</html>
